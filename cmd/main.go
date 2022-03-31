@@ -10,9 +10,10 @@ import (
 func main() {
 
 	p := fortify.NewEmptyPolicy()
-	p.EnableChangeroot("/home/ubuntu/workspace/fortify/cmd/jail")
+	//p.EnableChangeroot("/home/ubuntu/workspace/fortify/cmd/jail")
 	// if you need to find a user with some name, you could do that here
 	p.EnablePriviledgeDrop(1000)
+	p.SetTolerateDebugger(true)
 	p.SetCriticalFailureHandler(func(err error) {
 		log.Fatal("critical exit:", err)
 	})
