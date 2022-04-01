@@ -12,4 +12,6 @@ const (
 	COULD_NOT_CD_INTO_JAIL                    Violation = 7
 	CHANGEROOT_SYSCALL_FAILED                 Violation = 8
 	SETRESUID_SYSCALL_FAILED                  Violation = 9
+	CANNOT_GET_LOCAL_PROCESSEES               Violation = 10
+	UNACCEPTABLE_PROCESS_FOUND                Violation = 11
 )

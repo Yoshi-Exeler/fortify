@@ -20,7 +20,7 @@ type Policy struct {
 	targetUserID                 int
 	tolerateForeignParentProcess bool
 	allowedForeignRootPrograms   []string
-	violationHandler             func(violation Violation, msg string)
+	violation                    func(violation Violation, msg string)
 	enableSeccomp                bool
 	seccompPolicy                seccomp.Policy
 	checkProcessees              bool
@@ -63,7 +63,7 @@ func (p *Policy) SetAcceptableParentProcessees(proccessees []string) {
 // SetViolationHandler set the handler that is called when a policy
 // violation was detected
 func (p *Policy) SetViolationHandler(violationHandler func(Violation, string)) {
-	p.violationHandler = violationHandler
+	p.violation = violationHandler
 }
 
 // SetUnacceptableProcessees configures the policy to mandate that none of
@@ -93,7 +93,7 @@ func (p *Policy) apply() {
 			for {
 				time.Sleep(time.Second)
 				if p.isDebuggerPresent() {
-					p.violationHandler(DEBBUGGER_DETECTED, "[VIOLATION] debugger detected")
+					p.violation(DEBBUGGER_DETECTED, "[VIOLATION] debugger detected")
 				}
 			}
 		}()
@@ -101,49 +101,65 @@ func (p *Policy) apply() {
 
 	// Begin by checking the chain of processees sitting above us
 	if !p.tolerateForeignParentProcess {
-		p.checkParentChain(p.allowedForeignRootPrograms)
+		p.checkParentChain()
 	}
 	// Scan the system for unacceptable processees
 	if p.checkProcessees {
-		p.checkLocalProcessees(p.unacceptableProcessees)
+		p.checkLocalProcessees()
 	}
 	// if we should apply a changeroot, we call that first, since it requires the most permissions
 	if p.useChangeroot {
-		p.changeroot(p.changerootDirectory)
+		p.changeroot()
 	}
 	// enable secure compute mode
 	if p.enableSeccomp {
-		p.enableSeccompPolicy(p.seccompPolicy)
+		p.enableSeccompPolicy()
 	}
 	// next, if we should drop priviledges do so, so we have as little priviledged code as possible
 	if p.dropPriviledges {
-		p.setresuid(p.targetUserID)
+		p.setresuid()
 	}
 }
 
 // enableSeccompPolicy will enable the specified seccomp policy
-func (p *Policy) enableSeccompPolicy(policy seccomp.Policy) {
+func (p *Policy) enableSeccompPolicy() {
 	if !seccomp.Supported() {
-		p.violationHandler(SECCOMP_UNSUPPORTED_BY_OS, "[VIOLATION] seccomp was mandated by policy but the system does not support the syscall")
+		p.violation(SECCOMP_UNSUPPORTED_BY_OS, "[VIOLATION] seccomp was mandated by policy but the system does not support the syscall")
 	}
 	filter := seccomp.Filter{
 		NoNewPrivs: true, // this will make the seccomp filter irrevertable
 		Flag:       seccomp.FilterFlagTSync,
-		Policy:     policy,
+		Policy:     p.seccompPolicy,
 	}
 	if err := seccomp.LoadFilter(filter); err != nil {
-		p.violationHandler(SECCOMP_FILTER_INSTALLATION_FAILED, fmt.Sprintf("[VIOLATION] could not install seccomp filter with error %v", err))
+		p.violation(SECCOMP_FILTER_INSTALLATION_FAILED, fmt.Sprintf("[VIOLATION] could not install seccomp filter with error %v", err))
 	}
 }
 
-func (p *Policy) checkLocalProcessees(blacklist []string) {
-
+func (p *Policy) checkLocalProcessees() {
+	// get all running processees
+	processees, err := ps.Processes()
+	if err != nil {
+		p.violation(CANNOT_GET_LOCAL_PROCESSEES, fmt.Sprintf("[VIOLATIION] cannot read processees with error %v", err))
+	}
+	// map out the illegal processees
+	illegalProcs := make(map[string]bool)
+	for _, proc := range p.unacceptableProcessees {
+		illegalProcs[proc] = true
+	}
+	// check for unacceptable processees
+	for _, proc := range processees {
+		if illegalProcs[proc.Executable()] {
+			p.violation(UNACCEPTABLE_PROCESS_FOUND, fmt.Sprintf("[VIOLATIION] running with process '%v' is unacceptable", proc.Executable()))
+		}
+	}
 }
 
+// isDebuggerPresent check if a debugger is present using the TracerID flag in the /proc/self/status
 func (p *Policy) isDebuggerPresent() bool {
 	pid, err := getTracerPID()
 	if err != nil {
-		p.violationHandler(COULD_NOT_ACCESS_PROC_SELF, fmt.Sprintf("[VIOLATIION] cannot read own proc fs with error %v", err))
+		p.violation(COULD_NOT_ACCESS_PROC_SELF, fmt.Sprintf("[VIOLATIION] cannot read own proc fs with error %v", err))
 	}
 	return pid != 0
 }
@@ -151,7 +167,7 @@ func (p *Policy) isDebuggerPresent() bool {
 // checkParentChain will traverse the chain of parent processees and check them against
 // a list of acceptable parent processees. If a non-acceptable parent process is found,
 // a violation will be raised
-func (p *Policy) checkParentChain(allowed []string) {
+func (p *Policy) checkParentChain() {
 	// get the process id of the parent process
 	pid := os.Getppid()
 
@@ -160,7 +176,7 @@ func (p *Policy) checkParentChain(allowed []string) {
 		// grab the current process in the chain
 		process, err := ps.FindProcess(pid)
 		if err != nil {
-			p.violationHandler(PARENT_PROCESS_COULD_NOT_BE_ACCESSED, fmt.Sprintf("[VIOLATION] running under process that could not be accessed by findProcess with error %v", err))
+			p.violation(PARENT_PROCESS_COULD_NOT_BE_ACCESSED, fmt.Sprintf("[VIOLATION] running under process that could not be accessed by findProcess with error %v", err))
 		}
 		// if no mathing process was found, the chain has terminated
 		if process == nil {
@@ -177,26 +193,26 @@ func (p *Policy) checkParentChain(allowed []string) {
 			}
 		}
 		if !acceptable {
-			p.violationHandler(RUNNING_UNDER_UNACCEPTABLE_PARENT_PROCESS, fmt.Sprintf("[VIOLATION] running under process '%v' was deemed unacceptable", binaryName))
+			p.violation(RUNNING_UNDER_UNACCEPTABLE_PARENT_PROCESS, fmt.Sprintf("[VIOLATION] running under process '%v' was deemed unacceptable", binaryName))
 		}
 		pid = process.PPid()
 	}
 }
 
 // changeroot syscall wrapper
-func (p *Policy) changeroot(dir string) {
-	if err := os.Chdir(dir); err != nil {
-		p.violationHandler(COULD_NOT_CD_INTO_JAIL, fmt.Sprintf("[VIOLATION] failed to change directory into new root with error %v", err))
+func (p *Policy) changeroot() {
+	if err := os.Chdir(p.changerootDirectory); err != nil {
+		p.violation(COULD_NOT_CD_INTO_JAIL, fmt.Sprintf("[VIOLATION] failed to change directory into new root with error %v", err))
 	}
-	if err := syscall.Chroot(dir); err != nil {
-		p.violationHandler(CHANGEROOT_SYSCALL_FAILED, fmt.Sprintf("[VIOLATION] changeroot syscall failed with error %v", err))
+	if err := syscall.Chroot(p.changerootDirectory); err != nil {
+		p.violation(CHANGEROOT_SYSCALL_FAILED, fmt.Sprintf("[VIOLATION] changeroot syscall failed with error %v", err))
 	}
 }
 
 // setresuid syscall wrapper
-func (p *Policy) setresuid(uid int) {
-	if err := syscall.Setresuid(uid, uid, uid); err != nil {
-		p.violationHandler(SETRESUID_SYSCALL_FAILED, fmt.Sprintf("[VIOLATION] setresuid syscall failed with error %v", err))
+func (p *Policy) setresuid() {
+	if err := syscall.Setresuid(p.targetUserID, p.targetUserID, p.targetUserID); err != nil {
+		p.violation(SETRESUID_SYSCALL_FAILED, fmt.Sprintf("[VIOLATION] setresuid syscall failed with error %v", err))
 	}
 }
 
