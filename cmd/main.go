@@ -14,13 +14,10 @@ func main() {
 	// if you need to find a user with some name, you could do that here
 	p.EnablePriviledgeDrop(1000)
 	p.SetTolerateDebugger(true)
-	p.SetCriticalFailureHandler(func(err error) {
-		log.Fatal("critical exit:", err)
-	})
 	p.SetTolerateForeignParentProcess(false)
 	// allow my regular execution chain
 	p.SetAcceptableParentProcessees([]string{"sudo", "bash", "node", "sh", "sshd", "systemd", "dlv"})
-	p.SetViolationHandler(func(s string) {
+	p.SetViolationHandler(func(v fortify.Violation, s string) {
 		log.Fatal("exit handler:", s)
 	})
 	//p.EnableSecureComputeMode(&SeccompProfile)

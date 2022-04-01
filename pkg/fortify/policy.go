@@ -18,10 +18,9 @@ type Policy struct {
 	changerootDirectory          string
 	dropPriviledges              bool
 	targetUserID                 int
-	criticalFailureHandler       func(error)
 	tolerateForeignParentProcess bool
 	allowedForeignRootPrograms   []string
-	violationHandler             func(string)
+	violationHandler             func(violation Violation, msg string)
 	enableSeccomp                bool
 	seccompPolicy                seccomp.Policy
 	checkProcessees              bool
@@ -63,7 +62,7 @@ func (p *Policy) SetAcceptableParentProcessees(proccessees []string) {
 
 // SetViolationHandler set the handler that is called when a policy
 // violation was detected
-func (p *Policy) SetViolationHandler(violationHandler func(string)) {
+func (p *Policy) SetViolationHandler(violationHandler func(Violation, string)) {
 	p.violationHandler = violationHandler
 }
 
@@ -80,14 +79,6 @@ func (p *Policy) SetTolerateDebugger(tolerate bool) {
 	p.tolerateDebugger = tolerate
 }
 
-// SetCriticalFailureHandler will configure the policy's critical failure handler,
-// which will be called to handle our exit strategy in case of a critical failure
-// during policy activation. Ususally this could just call log.Fatal.
-// It is essential that the specified handler ends the application in some way.
-func (p *Policy) SetCriticalFailureHandler(criticalFailureHandler func(error)) {
-	p.criticalFailureHandler = criticalFailureHandler
-}
-
 // EnableSecureComputeMode will configure the policy to mandate running in
 // Secure Compute Mode with the specified Seccomp Profile.
 func (p *Policy) EnableSecureComputeMode(profile seccomp.Policy) {
@@ -102,7 +93,7 @@ func (p *Policy) apply() {
 			for {
 				time.Sleep(time.Second)
 				if p.isDebuggerPresent() {
-					p.violationHandler("[VIOLATION] debugger detected")
+					p.violationHandler(DEBBUGGER_DETECTED, "[VIOLATION] debugger detected")
 				}
 			}
 		}()
@@ -130,9 +121,10 @@ func (p *Policy) apply() {
 	}
 }
 
+// enableSeccompPolicy will enable the specified seccomp policy
 func (p *Policy) enableSeccompPolicy(policy seccomp.Policy) {
 	if !seccomp.Supported() {
-		p.violationHandler("[VIOLATION] seccomp was mandated by policy but the system does not support the syscall")
+		p.violationHandler(SECCOMP_UNSUPPORTED_BY_OS, "[VIOLATION] seccomp was mandated by policy but the system does not support the syscall")
 	}
 	filter := seccomp.Filter{
 		NoNewPrivs: true, // this will make the seccomp filter irrevertable
@@ -140,7 +132,7 @@ func (p *Policy) enableSeccompPolicy(policy seccomp.Policy) {
 		Policy:     policy,
 	}
 	if err := seccomp.LoadFilter(filter); err != nil {
-		p.violationHandler(fmt.Sprintf("[VIOLATION] could not install seccomp filter with error %v", err))
+		p.violationHandler(SECCOMP_FILTER_INSTALLATION_FAILED, fmt.Sprintf("[VIOLATION] could not install seccomp filter with error %v", err))
 	}
 }
 
@@ -151,7 +143,7 @@ func (p *Policy) checkLocalProcessees(blacklist []string) {
 func (p *Policy) isDebuggerPresent() bool {
 	pid, err := getTracerPID()
 	if err != nil {
-		p.violationHandler(fmt.Sprintf("[VIOLATIION] cannot read own proc fs with error %v", err))
+		p.violationHandler(COULD_NOT_ACCESS_PROC_SELF, fmt.Sprintf("[VIOLATIION] cannot read own proc fs with error %v", err))
 	}
 	return pid != 0
 }
@@ -168,7 +160,7 @@ func (p *Policy) checkParentChain(allowed []string) {
 		// grab the current process in the chain
 		process, err := ps.FindProcess(pid)
 		if err != nil {
-			p.violationHandler(fmt.Sprintf("[VIOLATION] running under process that could not be accessed by findProcess with error %v", err))
+			p.violationHandler(PARENT_PROCESS_COULD_NOT_BE_ACCESSED, fmt.Sprintf("[VIOLATION] running under process that could not be accessed by findProcess with error %v", err))
 		}
 		// if no mathing process was found, the chain has terminated
 		if process == nil {
@@ -185,7 +177,7 @@ func (p *Policy) checkParentChain(allowed []string) {
 			}
 		}
 		if !acceptable {
-			p.violationHandler(fmt.Sprintf("[VIOLATION] running under process '%v' was deemed unacceptable", binaryName))
+			p.violationHandler(RUNNING_UNDER_UNACCEPTABLE_PARENT_PROCESS, fmt.Sprintf("[VIOLATION] running under process '%v' was deemed unacceptable", binaryName))
 		}
 		pid = process.PPid()
 	}
@@ -194,17 +186,17 @@ func (p *Policy) checkParentChain(allowed []string) {
 // changeroot syscall wrapper
 func (p *Policy) changeroot(dir string) {
 	if err := os.Chdir(dir); err != nil {
-		p.criticalFailureHandler(fmt.Errorf("[VIOLATION] failed to change directory into new root with error %v", err))
+		p.violationHandler(COULD_NOT_CD_INTO_JAIL, fmt.Sprintf("[VIOLATION] failed to change directory into new root with error %v", err))
 	}
 	if err := syscall.Chroot(dir); err != nil {
-		p.criticalFailureHandler(fmt.Errorf("[VIOLATION] changeroot syscall failed with error %v", err))
+		p.violationHandler(CHANGEROOT_SYSCALL_FAILED, fmt.Sprintf("[VIOLATION] changeroot syscall failed with error %v", err))
 	}
 }
 
 // setresuid syscall wrapper
 func (p *Policy) setresuid(uid int) {
 	if err := syscall.Setresuid(uid, uid, uid); err != nil {
-		p.criticalFailureHandler(fmt.Errorf("[VIOLATION] setresuid syscall failed with error %v", err))
+		p.violationHandler(SETRESUID_SYSCALL_FAILED, fmt.Sprintf("[VIOLATION] setresuid syscall failed with error %v", err))
 	}
 }
 
