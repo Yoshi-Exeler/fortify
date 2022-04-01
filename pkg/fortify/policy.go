@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"os/user"
 	"syscall"
 	"time"
 
@@ -26,10 +28,17 @@ type Policy struct {
 	checkProcessees              bool
 	unacceptableProcessees       []string
 	tolerateDebugger             bool
+	requireRootLaunch            bool
 }
 
 func NewEmptyPolicy() *Policy {
 	return &Policy{tolerateForeignParentProcess: true}
+}
+
+// EnableRequireRootLaunch will configure the policy to mandate the
+// process to be launched as root. Failing to do so will raise a violation.
+func (p *Policy) EnableRequireRootLaunch() {
+	p.requireRootLaunch = true
 }
 
 // EnableChangeroot will configure the policy to mandate a changeroot
@@ -66,9 +75,9 @@ func (p *Policy) SetViolationHandler(violationHandler func(Violation, string)) {
 	p.violation = violationHandler
 }
 
-// SetUnacceptableProcessees configures the policy to mandate that none of
+// EnableProcessScanning configures the policy to mandate that none of
 // the specified processees are running during initialization
-func (p *Policy) SetUnacceptableProcessees(proccessees []string) {
+func (p *Policy) EnableProcessScanning(proccessees []string) {
 	p.unacceptableProcessees = proccessees
 	p.checkProcessees = true
 }
@@ -88,11 +97,16 @@ func (p *Policy) EnableSecureComputeMode(profile seccomp.Policy) {
 
 // apply will apply the policy
 func (p *Policy) apply() {
+	if p.requireRootLaunch && !p.runningAsRoot() {
+		p.violation(ROOT_LAUNCH_REQUIRED, fmt.Sprintf("[VIOLATION] not launched as root"))
+	}
+	// if we dont tolerate debuggers, launch a routine that regularly
+	// runs the internal debugger check based on TracerID
 	if !p.tolerateDebugger {
 		go func() {
 			for {
 				time.Sleep(time.Second)
-				if p.isDebuggerPresent() {
+				if p.hasDebuggerInternal() {
 					p.violation(DEBBUGGER_DETECTED, "[VIOLATION] debugger detected")
 				}
 			}
@@ -136,6 +150,18 @@ func (p *Policy) enableSeccompPolicy() {
 	}
 }
 
+// runningAsRoot will check if we are running as root. This
+// check is somewhat naive and can be manipulated, which is okay
+// since it is not security critical.
+func (p *Policy) runningAsRoot() bool {
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Fatalf("[isRoot] Unable to get current user: %s", err)
+	}
+	return currentUser.Username == "root"
+}
+
+// checkLocalProcessees will check the running processees against the configured list of unacceptable processees
 func (p *Policy) checkLocalProcessees() {
 	// get all running processees
 	processees, err := ps.Processes()
@@ -155,8 +181,8 @@ func (p *Policy) checkLocalProcessees() {
 	}
 }
 
-// isDebuggerPresent check if a debugger is present using the TracerID flag in the /proc/self/status
-func (p *Policy) isDebuggerPresent() bool {
+// hasDebuggerInternal check if a debugger is present using the TracerID flag in the /proc/self/status
+func (p *Policy) hasDebuggerInternal() bool {
 	pid, err := getTracerPID()
 	if err != nil {
 		p.violation(COULD_NOT_ACCESS_PROC_SELF, fmt.Sprintf("[VIOLATIION] cannot read own proc fs with error %v", err))
