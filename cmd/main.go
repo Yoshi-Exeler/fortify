@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"fortify/pkg/fortify"
-	"log"
 	"time"
 )
 
@@ -17,17 +16,16 @@ func main() {
 	p.SetTolerateForeignParentProcess(false)
 	// allow my regular execution chain
 	p.SetAcceptableParentProcessees([]string{"sudo", "bash", "node", "sh", "sshd", "systemd", "dlv"})
-	p.SetViolationHandler(func(v fortify.Violation, s string) {
-		log.Fatal("exit handler:", s)
+	p.SetViolationHandler(func(v fortify.Violation, s string) bool {
+		fmt.Println("VIOLATION:", v, s)
+		return true
 	})
 	//p.EnableSecureComputeMode(&SeccompProfile)
 	fortify.InitKernel(p)
 
 	kernel := fortify.GetKernel()
 
-	kernel.Crash()
-
-	time.Sleep(time.Minute * 2)
+	go fortify.CrashFuzzy()
 
 	kernel.RegisterBeforeActivate(func() {
 		fmt.Println("Before activate, you could read in some files here")
@@ -45,8 +43,10 @@ func main() {
 
 	for {
 		time.Sleep(time.Second * 1)
-		fmt.Println(num)
-		num++
+		go func() {
+			fmt.Println(num)
+			num++
+		}()
 	}
 
 }

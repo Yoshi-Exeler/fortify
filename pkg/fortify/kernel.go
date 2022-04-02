@@ -30,6 +30,9 @@ func InitKernel(policy *Policy) {
 		instance = &Kernel{policy: policy, berforeActivateHooks: make([]func(), 0), afterActivateHooks: make([]func(), 0), mutex: &sync.Mutex{}}
 		// link the policy to the kernel
 		instance.policy.kernel = instance
+		// launch kernel patch protection to ensure that the policy does not change
+		// at runtime.
+		go kpp(instance.policy, *instance.policy, instance)
 		// now the one minute starts
 		go assertPolicyActive(instance)
 	})
@@ -112,7 +115,7 @@ func assertPolicyActive(k *Kernel) {
 	if !k.fortificationActive {
 		go func() {
 			// begin fuzzy crashing
-			go k.Crash()
+			go CrashFuzzy()
 			// wait a minute for the crash to happen
 			time.Sleep(time.Minute)
 			// if we still haven't crashed, hard crash
@@ -126,7 +129,7 @@ func assertPolicyActive(k *Kernel) {
 	}
 	if k.policy == nil {
 		go func() {
-			go k.Crash()
+			go CrashFuzzy()
 			time.Sleep(time.Minute)
 			go func() {
 				time.Sleep(time.Second)

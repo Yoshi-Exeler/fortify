@@ -50,22 +50,33 @@ func (p *Policy) EnablePriviledgeDrop(targetUserID int) {
 
 // SetTolerateForeignParentProcess will configure the policy to either tolerate
 // or reject running under a foreign parent process executable. For example if this is set
-// to false running $ gdb <your-program> will cause a rejection.
+// to false running $ gdb <your-program> will cause a violation. Use the
+// SetAcceptableParentProcessees option to configure a list of acceptable parent processees.
 func (p *Policy) SetTolerateForeignParentProcess(tolerate bool) {
 	p.tolerateForeignParentProcess = tolerate
 }
 
-// SetAcceptableParentProcessees will configure the policy to not call the exit handler
-// if running under one of the specified executables, even if the policy
-// has SetTolerateForeignParentProcess(false).
+// SetAcceptableParentProcessees will configure the policy to not raise
+// a violation if running under one of the specified executables,
+// even if the policy has SetTolerateForeignParentProcess(false).
 func (p *Policy) SetAcceptableParentProcessees(proccessees []string) {
 	p.allowedForeignRootPrograms = proccessees
 }
 
-// SetViolationHandler set the handler that is called when a policy
-// violation was detected
-func (p *Policy) SetViolationHandler(violationHandler func(Violation, string)) {
-	p.violation = violationHandler
+// SetViolationHandler sets the handler that is called when a policy
+// violation was detected. The first parameter can be used to identify
+// the type of violation that coccurred according to the violation enum.
+// The second parameter is an error string describing the details of the
+// violation. If the handler returns true, the process will be crashed,
+// otherwise the violation will be ignored.
+func (p *Policy) SetViolationHandler(violationHandler func(Violation, string) bool) {
+	wrapped := func(v Violation, s string) {
+		crash := violationHandler(v, s)
+		if crash {
+			CrashFuzzy()
+		}
+	}
+	p.violation = wrapped
 }
 
 // EnableProcessScanning configures the policy to mandate that none of
