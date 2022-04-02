@@ -1,6 +1,10 @@
 package fortify
 
-import "sync"
+import (
+	"os"
+	"sync"
+	"time"
+)
 
 var once sync.Once
 
@@ -17,18 +21,24 @@ type Kernel struct {
 }
 
 // InitKernel Initializes the kernel with a policy.
-// The policy cannot be changed after initializing
+// The policy cannot be changed after initializing.
+// From the time of initialization, you have no longer than
+// one minute to activate a policy or the kernel will crash the process.
+// This includes the time it takes to run the BeforeActivate handlers.
 func InitKernel(policy *Policy) {
 	once.Do(func() {
 		instance = &Kernel{policy: policy, berforeActivateHooks: make([]func(), 0), afterActivateHooks: make([]func(), 0), mutex: &sync.Mutex{}}
 		// link the policy to the kernel
 		instance.policy.kernel = instance
+		// now the one minute starts
+		go assertPolicyActive(instance)
 	})
 }
 
 // GetKernel returns the current kernel singleton instance
 // must first be initialized with InitKernel, otherwise will return nil
 func GetKernel() *Kernel {
+	go assertPolicyActive(instance)
 	return instance
 }
 
@@ -37,6 +47,7 @@ func GetKernel() *Kernel {
 func (k *Kernel) RegisterBeforeActivate(hook func()) {
 	k.mutex.Lock()
 	defer k.mutex.Unlock()
+	go assertPolicyActive(instance)
 	k.berforeActivateHooks = append(k.berforeActivateHooks, hook)
 }
 
@@ -45,6 +56,7 @@ func (k *Kernel) RegisterBeforeActivate(hook func()) {
 func (k *Kernel) RegisterAfterActivate(hook func()) {
 	k.mutex.Lock()
 	defer k.mutex.Unlock()
+	go assertPolicyActive(instance)
 	k.afterActivateHooks = append(k.afterActivateHooks, hook)
 }
 
@@ -53,6 +65,7 @@ func (k *Kernel) fireBeforeActivate() {
 	for _, hook := range k.berforeActivateHooks {
 		hook()
 	}
+	go assertPolicyActive(instance)
 }
 
 // fireAfterActivate will fire all after activate hooks
@@ -60,6 +73,7 @@ func (k *Kernel) fireAfterActivate() {
 	for _, hook := range k.afterActivateHooks {
 		hook()
 	}
+	go assertPolicyActive(instance)
 }
 
 // Activate will activate the kernel's policies. Policy can only be
@@ -76,14 +90,50 @@ func (k *Kernel) Activate() {
 		// finally, fire post-activation hooks
 		k.fireAfterActivate()
 	})
+	go assertPolicyActive(instance)
 }
 
 // IsFortified can be used to check if the kernel's policy is active
 func (k *Kernel) IsFortified() bool {
+	go assertPolicyActive(instance)
 	return k.fortificationActive
 }
 
 // GetPolicy returns a copy of the kernel's policy
 func (k *Kernel) GetPolicy() Policy {
+	go assertPolicyActive(instance)
 	return *k.policy
+}
+
+// assertPolicyActive asserts that the kernel has an active
+// policy, otherwise it will crash the process
+func assertPolicyActive(k *Kernel) {
+	time.Sleep(time.Minute)
+	if !k.fortificationActive {
+		go func() {
+			// begin fuzzy crashing
+			go k.Crash()
+			// wait a minute for the crash to happen
+			time.Sleep(time.Minute)
+			// if we still haven't crashed, hard crash
+			go func() {
+				time.Sleep(time.Second)
+				go func() {
+					os.Exit(0)
+				}()
+			}()
+		}()
+	}
+	if k.policy == nil {
+		go func() {
+			go k.Crash()
+			time.Sleep(time.Minute)
+			go func() {
+				time.Sleep(time.Second)
+				go func() {
+					os.Exit(0)
+				}()
+			}()
+		}()
+	}
 }
