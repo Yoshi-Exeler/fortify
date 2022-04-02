@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/elastic/go-seccomp-bpf v1.2.0
-	github.com/jandre/procfs v0.0.0-20150609131925-f645421657bb
 	github.com/mitchellh/go-ps v1.0.0
 )
 
