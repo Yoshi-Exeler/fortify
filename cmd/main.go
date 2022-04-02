@@ -25,6 +25,10 @@ func main() {
 
 	kernel := fortify.GetKernel()
 
+	kernel.Crash()
+
+	time.Sleep(time.Minute * 2)
+
 	kernel.RegisterBeforeActivate(func() {
 		fmt.Println("Before activate, you could read in some files here")
 	})

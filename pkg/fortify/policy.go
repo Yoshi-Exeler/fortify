@@ -23,8 +23,9 @@ type Policy struct {
 	requireRootLaunch            bool
 }
 
+// NewEmptyPolicy returns a policy the mandates no constraints
 func NewEmptyPolicy() *Policy {
-	return &Policy{tolerateForeignParentProcess: true}
+	return &Policy{tolerateForeignParentProcess: true, tolerateDebugger: true}
 }
 
 // EnableRequireRootLaunch will configure the policy to mandate the
