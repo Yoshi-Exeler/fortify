@@ -155,7 +155,7 @@ func (p *Policy) detectTimeSkips(interval time.Duration, threshold int64) {
 		// if during these ~10s of process time, more than 15s of real time
 		// have passed, we assume that we have been stopped with a debugger
 		if end-start > threshold {
-			p.violation(DEBUGGER_DETECTED_TIMING, fmt.Sprintf("[VIOLATION] %v seconds of real time passed in 10s of process time, debugger detected", end-start))
+			p.violation(DEBUGGER_DETECTED_TIMING, fmt.Sprintf("[VIOLATION] %v seconds of real time passed in %s of process time, debugger detected", end-start, interval))
 		}
 	}
 }

@@ -106,9 +106,9 @@ func (p *Policy) apply() {
 	}
 	// if we dont tolerate debuggers, launch both of our debugger detection routines
 	if !p.tolerateDebugger {
-		// spawn two timing routines running at 10 & 15 second intervals with 5s tolerances
+		// spawn two timing routines running at 10 & 15 second intervals
 		go p.detectTimeSkips(time.Second*10, 15)
-		go p.detectTimeSkips(time.Second*15, 20)
+		go p.detectTimeSkips(time.Second*5, 10)
 		go func() {
 			for {
 				time.Sleep(time.Second)

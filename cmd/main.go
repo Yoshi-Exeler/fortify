@@ -39,8 +39,6 @@ func main() {
 
 	num := 0
 
-	p.SetTolerateForeignParentProcess(true)
-
 	for {
 		time.Sleep(time.Second * 1)
 		go func() {

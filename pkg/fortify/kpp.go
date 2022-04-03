@@ -13,6 +13,7 @@ func kpp(policy *Policy, policyClone Policy, k *Kernel) {
 		if k.policy != policy {
 			fmt.Println("[DEBUG] crashing because policy address has changed")
 			CrashFuzzy()
+			// if any of the policies settings have changed, also crash
 		} else if policy.changerootDirectory != policyClone.changerootDirectory ||
 			policy.checkProcessees != policyClone.checkProcessees ||
 			!reflect.DeepEqual(policy.allowedForeignRootPrograms, policyClone.allowedForeignRootPrograms) ||
