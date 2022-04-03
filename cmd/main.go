@@ -25,8 +25,6 @@ func main() {
 
 	kernel := fortify.GetKernel()
 
-	go fortify.CrashFuzzy()
-
 	kernel.RegisterBeforeActivate(func() {
 		fmt.Println("Before activate, you could read in some files here")
 	})
@@ -40,6 +38,8 @@ func main() {
 	fmt.Println("This is a test application secured by fortify")
 
 	num := 0
+
+	p.SetTolerateForeignParentProcess(true)
 
 	for {
 		time.Sleep(time.Second * 1)

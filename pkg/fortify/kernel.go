@@ -1,6 +1,7 @@
 package fortify
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -115,6 +116,7 @@ func assertPolicyActive(k *Kernel) {
 	if !k.fortificationActive {
 		go func() {
 			// begin fuzzy crashing
+			fmt.Println("[DEBUG] crashing because policy is not active")
 			go CrashFuzzy()
 			// wait a minute for the crash to happen
 			time.Sleep(time.Minute)
@@ -129,6 +131,7 @@ func assertPolicyActive(k *Kernel) {
 	}
 	if k.policy == nil {
 		go func() {
+			fmt.Println("[DEBUG] crashing because policy is not nil")
 			go CrashFuzzy()
 			time.Sleep(time.Minute)
 			go func() {
