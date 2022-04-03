@@ -144,17 +144,17 @@ func getTracerPID() (int, error) {
 // this happens whenever a debugger stops our process with SIGSTOP.
 // If a timing difference of at least 5 seconds is detected, a violation
 // will be raised.
-func (p *Policy) detectTimeSkips() {
+func (p *Policy) detectTimeSkips(interval time.Duration, threshold int64) {
 	for {
 		// record the current time
 		start := time.Now().Unix()
 		// sleep for 10s
-		time.Sleep(time.Second * 10)
+		time.Sleep(interval)
 		// record the time again
 		end := time.Now().Unix()
 		// if during these ~10s of process time, more than 15s of real time
 		// have passed, we assume that we have been stopped with a debugger
-		if end-start > 15 {
+		if end-start > threshold {
 			p.violation(DEBUGGER_DETECTED_TIMING, fmt.Sprintf("[VIOLATION] %v seconds of real time passed in 10s of process time, debugger detected", end-start))
 		}
 	}
