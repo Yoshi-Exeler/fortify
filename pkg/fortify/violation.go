@@ -3,7 +3,7 @@ package fortify
 type Violation byte
 
 const (
-	DEBBUGGER_DETECTED                        Violation = 1
+	DEBBUGGER_DETECTED_TRACER                 Violation = 1
 	SECCOMP_UNSUPPORTED_BY_OS                 Violation = 2
 	SECCOMP_FILTER_INSTALLATION_FAILED        Violation = 3
 	COULD_NOT_ACCESS_PROC_SELF                Violation = 4
@@ -15,4 +15,5 @@ const (
 	CANNOT_GET_LOCAL_PROCESSEES               Violation = 10
 	UNACCEPTABLE_PROCESS_FOUND                Violation = 11
 	ROOT_LAUNCH_REQUIRED                      Violation = 12
+	DEBUGGER_DETECTED_TIMING                  Violation = 13
 )

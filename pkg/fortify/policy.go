@@ -104,14 +104,14 @@ func (p *Policy) apply() {
 	if p.requireRootLaunch && !p.runningAsRoot() {
 		p.violation(ROOT_LAUNCH_REQUIRED, "[VIOLATION] not launched as root")
 	}
-	// if we dont tolerate debuggers, launch a routine that regularly
-	// runs the internal debugger check based on TracerID
+	// if we dont tolerate debuggers, launch both of our debugger detection routines
 	if !p.tolerateDebugger {
+		go p.detectTimeSkips()
 		go func() {
 			for {
 				time.Sleep(time.Second)
-				if p.hasDebuggerInternal() {
-					p.violation(DEBBUGGER_DETECTED, "[VIOLATION] debugger detected")
+				if p.hasTracerPID() {
+					p.violation(DEBBUGGER_DETECTED_TRACER, "[VIOLATION] debugger detected, TracerPID is not 0")
 				}
 			}
 		}()
