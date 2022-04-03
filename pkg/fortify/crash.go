@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-var DW_ZERO = [4]byte{0, 0, 0, 0}
+var DW_ZERO = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
 
 const WRITE_DELAY = 1
 
@@ -24,8 +24,8 @@ func CrashFuzzy() {
 	for {
 		time.Sleep(time.Millisecond * WRITE_DELAY)
 		// write an empty dword to this location
-		*(*[4]byte)(unsafe.Pointer(uintptr(membase) + offset)) = DW_ZERO
-		*(*[4]byte)(unsafe.Pointer(uintptr(membase) - offset)) = DW_ZERO
+		*(*[8]byte)(unsafe.Pointer(uintptr(membase) + offset)) = DW_ZERO
+		*(*[8]byte)(unsafe.Pointer(uintptr(membase) - offset)) = DW_ZERO
 		// increment the offset
 		offset += 4
 	}
