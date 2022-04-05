@@ -3,14 +3,17 @@ Fortify is a fully featured process security package.
 
 ## Usage
 First, create an empty policy:
+
 `p := fortify.NewEmptyPolicy()`
 
 Next, configure it using its methods:
+
 `p.EnableChangeroot("/home/me/jail/")
 p.SetTolerateDebugger(false)
 ...`
 
 Finally, create a kernel with your policy and activate it:
+
 `fortify.InitKernel(p)
 k := fortify.GetKernel()
 k.Activate()`
