@@ -9,13 +9,16 @@ First, create an empty policy:
 Next, configure it using its methods:
 
 `p.EnableChangeroot("/home/me/jail/")
+
 p.SetTolerateDebugger(false)
 ...`
 
 Finally, create a kernel with your policy and activate it:
 
 `fortify.InitKernel(p)
+
 k := fortify.GetKernel()
+
 k.Activate()`
 
 ## Policy settings
