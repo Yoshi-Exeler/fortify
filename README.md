@@ -21,6 +21,9 @@ k.Activate()`
 ## Policy settings
 This package provides features that allow you to secure the system from your process but also features that allow you to secure your process from users trying to analyse it (and perhaps bypass your drm scheme).
 
+### Root Launch
+Using the `p.SetRequireRootLaunch(require bool)` option, you can force the process to check that it was started with root priviledges.
+
 ### Changeroot
 Using the `p.EnabeChangeroot(dir string)` option, you can force the process to changeroot into the specified directory during policy activation.
 
