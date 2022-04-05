@@ -15,7 +15,7 @@ func main() {
 	p.SetTolerateDebugger(false)
 	p.SetTolerateForeignParentProcess(false)
 	// allow my regular execution chain
-	p.SetAcceptableParentProcessees([]string{"sudo", "bash", "node", "sh", "sshd", "systemd", "dlv"})
+	p.SetAcceptableParentProcessees([]string{"sudo", "bash", "node", "sh", "sshd", "systemd"})
 	p.SetViolationHandler(func(v fortify.Violation, s string) bool {
 		fmt.Println("VIOLATION:", v, s)
 		return true
