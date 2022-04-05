@@ -4,22 +4,22 @@ Fortify is a fully featured process security package.
 ## Usage
 First, create an empty policy:
 
-`p := fortify.NewEmptyPolicy()`
+```p := fortify.NewEmptyPolicy()```go
 
 Next, configure it using its methods:
 
-`p.EnableChangeroot("/home/me/jail/")
+```p.EnableChangeroot("/home/me/jail/")
 
 p.SetTolerateDebugger(false)
-...`
+...```go
 
 Finally, create a kernel with your policy and activate it:
 
-`fortify.InitKernel(p)
+```fortify.InitKernel(p)
 
 k := fortify.GetKernel()
 
-k.Activate()`
+k.Activate()```
 
 ## Policy settings
 This package provides features that allow you to secure the system from your process but also features that allow you to secure your process from users trying to analyse it (and perhaps bypass your drm scheme).
