@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"fortify/pkg/fortify"
 	"time"
+
+	"github.com/elastic/go-seccomp-bpf"
 )
 
 func main() {
