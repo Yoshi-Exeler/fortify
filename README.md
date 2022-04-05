@@ -24,8 +24,8 @@ This package provides features that allow you to secure the system from your pro
 ### Changeroot
 Using the `p.EnabeChangeroot(dir string)` option, you can force the process to changeroot into the specified directory during policy activation.
 
-### Priviledge Drop
-Using the `p.EnablePriviledgeDrop(uid int)` option, you can force the process to change its user with the Setresuid syscall to the specified user id during initialization.
+### Privilege Drop
+Using the `p.EnablePrivilegeDrop(uid int)` option, you can force the process to change its user with the Setresuid syscall to the specified user id during initialization.
 
 ### Seccomp
 Using the `p.EnableSecureComputeMode(policy seccomp.Policy)` option, you can force the process to activate the specified seccomp filter policy during initialization.

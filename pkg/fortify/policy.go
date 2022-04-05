@@ -10,7 +10,7 @@ type Policy struct {
 	kernel                       *Kernel
 	useChangeroot                bool
 	changerootDirectory          string
-	dropPriviledges              bool
+	dropPrivileges               bool
 	targetUserID                 int
 	tolerateForeignParentProcess bool
 	allowedForeignRootPrograms   []string
@@ -41,11 +41,11 @@ func (p *Policy) EnableChangeroot(directory string) {
 	p.useChangeroot = true
 }
 
-// EnablePriviledgeDrop will configure the policy to mandate a setresuid
+// EnablePrivilegeDrop will configure the policy to mandate a setresuid
 // syscall, changing the current user to the specified user id upon activation
-func (p *Policy) EnablePriviledgeDrop(targetUserID int) {
+func (p *Policy) EnablePrivilegeDrop(targetUserID int) {
 	p.targetUserID = targetUserID
-	p.dropPriviledges = true
+	p.dropPrivileges = true
 }
 
 // SetTolerateForeignParentProcess will configure the policy to either tolerate
@@ -135,8 +135,8 @@ func (p *Policy) apply() {
 	if p.enableSeccomp {
 		p.enableSeccompPolicy()
 	}
-	// next, if we should drop priviledges do so, so we have as little priviledged code as possible
-	if p.dropPriviledges {
+	// next, if we should drop privileges do so, so we have as little privileged code as possible
+	if p.dropPrivileges {
 		p.setresuid()
 	}
 }

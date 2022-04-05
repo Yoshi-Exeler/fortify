@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"fortify/pkg/fortify"
 	"time"
-
-	"github.com/elastic/go-seccomp-bpf"
 )
 
 func main() {
@@ -13,7 +11,7 @@ func main() {
 	p := fortify.NewEmptyPolicy()
 	//p.EnableChangeroot("/home/ubuntu/workspace/fortify/cmd/jail")
 	// if you need to find a user with some name, you could do that here
-	p.EnablePriviledgeDrop(1000)
+	p.EnablePrivilegeDrop(1000)
 	p.SetTolerateDebugger(false)
 	p.SetTolerateForeignParentProcess(false)
 	// allow my regular execution chain

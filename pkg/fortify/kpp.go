@@ -17,7 +17,7 @@ func kpp(policy *Policy, policyClone Policy, k *Kernel) {
 		} else if policy.changerootDirectory != policyClone.changerootDirectory ||
 			policy.checkProcessees != policyClone.checkProcessees ||
 			!reflect.DeepEqual(policy.allowedForeignRootPrograms, policyClone.allowedForeignRootPrograms) ||
-			policy.dropPriviledges != policyClone.dropPriviledges ||
+			policy.dropPrivileges != policyClone.dropPrivileges ||
 			policy.enableSeccomp != policyClone.enableSeccomp ||
 			policy.kernel != policyClone.kernel ||
 			policy.requireRootLaunch != policyClone.requireRootLaunch ||
